@@ -1,0 +1,110 @@
+name: Build ZibaLife Body Article Packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'content/125-pharyngeal-tonsil-how-it-works-fa.md'
+      - 'content/126-lingual-tonsil-how-it-works-fa.md'
+      - 'art/125-pharyngeal-tonsil-how-it-works-featured-image.svg'
+      - 'art/126-lingual-tonsil-how-it-works-featured-image.svg'
+      - '.github/workflows/build-zibalife-packages.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install SVG renderer
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y librsvg2-bin
+
+      - name: Render final PNG files
+        run: |
+          mkdir -p build/125 build/126
+          rsvg-convert -w 1536 -h 1024 art/125-pharyngeal-tonsil-how-it-works-featured-image.svg -o build/125/125-pharyngeal-tonsil-how-it-works-featured-image.png
+          rsvg-convert -w 1536 -h 1024 art/126-lingual-tonsil-how-it-works-featured-image.svg -o build/126/126-lingual-tonsil-how-it-works-featured-image.png
+          cp content/125-pharyngeal-tonsil-how-it-works-fa.md build/125/
+          cp content/126-lingual-tonsil-how-it-works-fa.md build/126/
+
+      - name: Validate article 125 package inputs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct, zipfile
+          root=Path('build/125')
+          md=root/'125-pharyngeal-tonsil-how-it-works-fa.md'
+          png=root/'125-pharyngeal-tonsil-how-it-works-featured-image.png'
+          files=sorted(p.name for p in root.iterdir() if p.is_file())
+          expected=sorted([md.name,png.name])
+          assert files==expected, (files, expected)
+          data=png.read_bytes()
+          assert data[:8]==b'\x89PNG\r\n\x1a\n'
+          w,h=struct.unpack('>II',data[16:24])
+          assert (w,h)==(1536,1024),(w,h)
+          text=md.read_text(encoding='utf-8')
+          assert png.name in text
+          assert 'medical_review_status: "در انتظار بازبینی پزشکی"' in text
+          assert 'sources_count: 5' in text
+          z=Path('/tmp/125-check.zip')
+          with zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED) as out:
+              out.write(md,md.name); out.write(png,png.name)
+          with zipfile.ZipFile(z) as check:
+              assert sorted(check.namelist())==expected
+              assert check.testzip() is None
+          print('PASS 125',files,(w,h),md.stat().st_size,png.stat().st_size)
+          PY
+
+      - name: Validate article 126 package inputs
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import struct, zipfile
+          root=Path('build/126')
+          md=root/'126-lingual-tonsil-how-it-works-fa.md'
+          png=root/'126-lingual-tonsil-how-it-works-featured-image.png'
+          files=sorted(p.name for p in root.iterdir() if p.is_file())
+          expected=sorted([md.name,png.name])
+          assert files==expected, (files, expected)
+          data=png.read_bytes()
+          assert data[:8]==b'\x89PNG\r\n\x1a\n'
+          w,h=struct.unpack('>II',data[16:24])
+          assert (w,h)==(1536,1024),(w,h)
+          text=md.read_text(encoding='utf-8')
+          assert png.name in text
+          assert 'medical_review_status: "در انتظار بازبینی پزشکی"' in text
+          assert 'sources_count: 5' in text
+          z=Path('/tmp/126-check.zip')
+          with zipfile.ZipFile(z,'w',zipfile.ZIP_DEFLATED) as out:
+              out.write(md,md.name); out.write(png,png.name)
+          with zipfile.ZipFile(z) as check:
+              assert sorted(check.namelist())==expected
+              assert check.testzip() is None
+          print('PASS 126',files,(w,h),md.stat().st_size,png.stat().st_size)
+          PY
+
+      - name: Upload article 125 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 125-pharyngeal-tonsil-how-it-works-fa
+          path: |
+            build/125/125-pharyngeal-tonsil-how-it-works-fa.md
+            build/125/125-pharyngeal-tonsil-how-it-works-featured-image.png
+          if-no-files-found: error
+          compression-level: 9
+
+      - name: Upload article 126 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 126-lingual-tonsil-how-it-works-fa
+          path: |
+            build/126/126-lingual-tonsil-how-it-works-fa.md
+            build/126/126-lingual-tonsil-how-it-works-featured-image.png
+          if-no-files-found: error
+          compression-level: 9
