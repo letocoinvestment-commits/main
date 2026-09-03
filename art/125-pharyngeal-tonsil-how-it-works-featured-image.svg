@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1536" height="1024" viewBox="0 0 1536 1024">
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f7fbfd"/><stop offset="1" stop-color="#e8f2f6"/></linearGradient>
+  <linearGradient id="skin" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f4c6a7"/><stop offset="1" stop-color="#dfa783"/></linearGradient>
+  <linearGradient id="mucosa" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ef8f8d"/><stop offset="1" stop-color="#c95d66"/></linearGradient>
+  <radialGradient id="tonsil" cx="45%" cy="40%" r="65%"><stop offset="0" stop-color="#a64b8e"/><stop offset="0.65" stop-color="#713767"/><stop offset="1" stop-color="#4f2850"/></radialGradient>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="12" stdDeviation="14" flood-color="#163546" flood-opacity="0.18"/></filter>
+</defs>
+<rect width="1536" height="1024" fill="url(#bg)"/>
+<ellipse cx="1070" cy="530" rx="365" ry="400" fill="#ffffff" opacity="0.68" filter="url(#shadow)"/>
+<!-- head silhouette -->
+<path d="M240 120 C410 70 610 95 760 205 C865 282 916 402 895 530 C880 620 820 710 755 792 C714 844 690 903 675 960 L420 960 C438 872 451 807 417 752 C380 691 317 659 264 610 C199 550 166 474 180 390 C194 304 228 240 290 196 C256 175 236 150 240 120Z" fill="url(#skin)" stroke="#be8d72" stroke-width="8"/>
+<!-- facial cutaway cavity -->
+<path d="M278 215 C393 150 580 161 707 250 C757 285 792 335 807 389 C708 364 620 356 535 362 C446 369 367 397 306 439 C277 459 254 447 250 414 C244 357 248 284 278 215Z" fill="#f7b0a6" stroke="#b95b5d" stroke-width="7"/>
+<!-- nasal cavity -->
+<path d="M274 237 C375 184 543 185 668 255 C702 275 727 302 739 335 C637 322 543 326 455 346 C383 363 330 390 292 419 C267 433 252 421 252 395 C253 340 256 280 274 237Z" fill="#d97374"/>
+<path d="M331 263 C404 224 543 224 635 271 C648 278 659 287 668 298 C565 290 474 303 385 331 C359 339 338 343 321 342 C316 311 318 284 331 263Z" fill="#f2a9a0" opacity="0.65"/>
+<!-- turbinates -->
+<path d="M376 270 C455 248 554 252 611 284 C549 284 487 294 423 312 C400 319 383 306 376 270Z" fill="#c85c61"/>
+<path d="M357 322 C438 299 534 305 593 337 C512 337 441 350 382 372 C364 373 353 355 357 322Z" fill="#c85c61"/>
+<!-- oral cavity -->
+<path d="M303 483 C390 420 533 400 678 414 C750 421 796 454 804 509 C745 505 683 516 630 541 C568 571 525 613 488 660 C419 645 353 613 312 568 C285 539 280 507 303 483Z" fill="#b9505c"/>
+<!-- tongue -->
+<path d="M327 535 C395 494 493 487 587 510 C664 529 719 567 746 618 C669 594 599 603 532 639 C474 671 439 704 410 740 C359 706 322 658 309 607 C302 578 308 551 327 535Z" fill="#e7827e" stroke="#b55d60" stroke-width="6"/>
+<path d="M356 552 C415 525 496 522 561 538 C492 550 433 581 384 630 C363 611 351 586 356 552Z" fill="#f09b93" opacity="0.7"/>
+<!-- palate -->
+<path d="M301 445 C414 399 551 386 690 397 C741 401 774 421 787 451 C670 438 559 443 466 462 C395 476 342 490 305 507 C283 493 280 462 301 445Z" fill="#f0b49e"/>
+<!-- pharynx column -->
+<path d="M724 236 C815 275 852 349 850 449 L847 770 C845 825 812 864 760 882 L709 865 C745 800 754 727 745 657 C731 555 715 471 724 236Z" fill="url(#mucosa)" stroke="#a94f56" stroke-width="7"/>
+<!-- adenoid mass -->
+<g filter="url(#shadow)">
+  <ellipse cx="756" cy="337" rx="82" ry="99" fill="url(#tonsil)" stroke="#4b274e" stroke-width="6"/>
+  <g fill="#bd77a9" opacity="0.95">
+    <circle cx="721" cy="292" r="19"/><circle cx="755" cy="278" r="22"/><circle cx="788" cy="294" r="18"/>
+    <circle cx="705" cy="327" r="20"/><circle cx="741" cy="319" r="24"/><circle cx="780" cy="327" r="23"/><circle cx="811" cy="331" r="16"/>
+    <circle cx="714" cy="365" r="22"/><circle cx="752" cy="358" r="26"/><circle cx="791" cy="365" r="22"/>
+    <circle cx="736" cy="398" r="18"/><circle cx="771" cy="399" r="19"/>
+  </g>
+  <g fill="#f0b8d5" opacity="0.75"><circle cx="748" cy="319" r="7"/><circle cx="787" cy="364" r="6"/><circle cx="715" cy="361" r="6"/><circle cx="774" cy="293" r="6"/></g>
+</g>
+<!-- nasopharyngeal airway highlight -->
+<path d="M640 328 C677 319 710 321 733 333 C711 347 697 367 693 394 C671 386 650 375 631 360 C620 350 624 334 640 328Z" fill="#dbeef5" opacity="0.8"/>
+<!-- eustachian opening suggestion -->
+<ellipse cx="825" cy="359" rx="20" ry="12" fill="#7d394f" transform="rotate(-14 825 359)"/>
+<!-- lymphatic network decorative/educational -->
+<g stroke="#86a99d" stroke-width="5" fill="none" opacity="0.65">
+<path d="M803 430 C878 470 919 533 932 615 C941 672 960 720 1012 760"/>
+<path d="M859 520 C903 501 947 501 986 520"/><path d="M901 611 C954 595 1000 607 1034 644"/>
+</g>
+<g fill="#9ab8ae" opacity="0.8"><circle cx="868" cy="500" r="13"/><circle cx="928" cy="608" r="15"/><circle cx="977" cy="692" r="14"/><circle cx="1014" cy="760" r="16"/></g>
+<!-- subtle cell motif -->
+<g transform="translate(1110 290)" opacity="0.55"><circle cx="0" cy="0" r="62" fill="#d8e8ef"/><circle cx="0" cy="0" r="27" fill="#8a5e9b"/><circle cx="-11" cy="-8" r="7" fill="#c9a8d5"/><circle cx="24" cy="-30" r="7" fill="#6d8da5"/><circle cx="46" cy="16" r="9" fill="#6d8da5"/><circle cx="-40" cy="25" r="8" fill="#6d8da5"/></g>
+<g transform="translate(1230 610)" opacity="0.45"><circle cx="0" cy="0" r="78" fill="#e2f0f3"/><circle cx="0" cy="0" r="35" fill="#5c7890"/><circle cx="-45" cy="-18" r="10" fill="#91ad9f"/><circle cx="49" cy="-29" r="9" fill="#91ad9f"/><circle cx="38" cy="45" r="11" fill="#91ad9f"/></g>
+<!-- clean frame -->
+<rect x="34" y="34" width="1468" height="956" rx="38" fill="none" stroke="#bfd5df" stroke-width="4"/>
+</svg>
