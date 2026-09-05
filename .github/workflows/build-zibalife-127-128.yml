@@ -1,0 +1,134 @@
+name: Build ZibaLife 127-128 packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-zibalife-127-128.yml'
+      - 'automation/127-bone-marrow-how-it-works-fa.md'
+      - 'automation/128-red-bone-marrow-how-it-works-fa.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUTF8: '1'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install image tools
+        run: python -m pip install --disable-pip-version-check pillow
+
+      - name: Download medically relevant source images
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/127 build/128 srcimg
+          curl -L --fail --retry 3 --retry-delay 2 -A 'ZibaLifeContentBuilder/1.0' \
+            'https://commons.wikimedia.org/wiki/Special:Redirect/file/2205_Bone_Marrow.jpg' \
+            -o srcimg/bone-marrow-source.jpg
+          curl -L --fail --retry 3 --retry-delay 2 -A 'ZibaLifeContentBuilder/1.0' \
+            'https://commons.wikimedia.org/wiki/Special:Redirect/file/Trilineage_hematopoiesis_%28original%29.jpg' \
+            -o srcimg/red-marrow-source.jpg
+
+      - name: Build final PNG featured images
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > /tmp/build_images.py <<'PY'
+          from PIL import Image, ImageOps, ImageEnhance, ImageFilter
+          from pathlib import Path
+
+          W, H = 1536, 1024
+
+          def make(src, dst, mode):
+              im = Image.open(src).convert('RGB')
+              if mode == 'anatomy':
+                  im = ImageEnhance.Contrast(im).enhance(1.06)
+                  im = ImageEnhance.Color(im).enhance(1.03)
+              else:
+                  im = ImageEnhance.Contrast(im).enhance(1.08)
+                  im = ImageEnhance.Sharpness(im).enhance(1.08)
+              im = ImageOps.fit(im, (W, H), method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
+              im = im.filter(ImageFilter.UnsharpMask(radius=1.1, percent=110, threshold=3))
+              Path(dst).parent.mkdir(parents=True, exist_ok=True)
+              im.save(dst, format='PNG', optimize=True)
+              check = Image.open(dst)
+              assert check.format == 'PNG'
+              assert check.size == (W, H)
+
+          make('srcimg/bone-marrow-source.jpg', 'build/127/127-bone-marrow-how-it-works-featured-image.png', 'anatomy')
+          make('srcimg/red-marrow-source.jpg', 'build/128/128-red-bone-marrow-how-it-works-featured-image.png', 'histology')
+          PY
+          python /tmp/build_images.py
+
+      - name: Stage Markdown files
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp automation/127-bone-marrow-how-it-works-fa.md build/127/127-bone-marrow-how-it-works-fa.md
+          cp automation/128-red-bone-marrow-how-it-works-fa.md build/128/128-red-bone-marrow-how-it-works-fa.md
+
+      - name: Validate article packages before artifact creation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+          import re
+
+          specs = [
+              ('127', 'bone-marrow-how-it-works'),
+              ('128', 'red-bone-marrow-how-it-works'),
+          ]
+          for n, slug in specs:
+              folder = Path('build') / n
+              files = sorted(p.name for p in folder.iterdir() if p.is_file())
+              expected = sorted([
+                  f'{n}-{slug}-fa.md',
+                  f'{n}-{slug}-featured-image.png',
+              ])
+              assert files == expected, (n, files, expected)
+              md = (folder / f'{n}-{slug}-fa.md').read_text(encoding='utf-8')
+              assert f'featured_image: "{n}-{slug}-featured-image.png"' in md
+              assert 'medical_review_status: "در انتظار بازبینی پزشکی"' in md
+              assert 'این مطلب برای آموزش عمومی است و جایگزین تشخیص یا توصیه پزشک نیست.' in md
+              img = Image.open(folder / f'{n}-{slug}-featured-image.png')
+              assert img.format == 'PNG' and img.size == (1536, 1024)
+              assert len(md) > 10000
+              print(n, 'PASS', files, img.size, len(md))
+          PY
+
+      - name: Upload article 127 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 127-bone-marrow-how-it-works-fa
+          path: |
+            build/127/127-bone-marrow-how-it-works-fa.md
+            build/127/127-bone-marrow-how-it-works-featured-image.png
+          if-no-files-found: error
+          compression-level: 6
+          overwrite: true
+
+      - name: Upload article 128 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 128-red-bone-marrow-how-it-works-fa
+          path: |
+            build/128/128-red-bone-marrow-how-it-works-fa.md
+            build/128/128-red-bone-marrow-how-it-works-featured-image.png
+          if-no-files-found: error
+          compression-level: 6
+          overwrite: true
