@@ -1,0 +1,178 @@
+name: Build ZibaLife 129-130 packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'zibalife-body/129-hematopoietic-stem-cells-how-they-work-fa.md'
+      - 'zibalife-body/130-hematopoietic-microenvironment-how-it-works-fa.md'
+      - '.github/workflows/build-zibalife-129-130.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pillow
+        run: python -m pip install pillow
+      - name: Generate clean featured images and validate package inputs
+        run: |
+          python - <<'PY'
+          from PIL import Image, ImageDraw, ImageFilter
+          from pathlib import Path
+          import random, math, shutil
+
+          W,H=1536,1024
+          root=Path('zibalife-body')
+          out=Path('generated')
+          out.mkdir(exist_ok=True)
+
+          def gradient(c1,c2):
+              im=Image.new('RGB',(W,H))
+              px=im.load()
+              for y in range(H):
+                  t=y/(H-1)
+                  c=tuple(int(c1[i]*(1-t)+c2[i]*t) for i in range(3))
+                  for x in range(W): px[x,y]=c
+              return im
+
+          def glow_circle(base, xy, r, fill, glow, blur=35):
+              layer=Image.new('RGBA',base.size,(0,0,0,0)); d=ImageDraw.Draw(layer)
+              d.ellipse((xy[0]-r*1.35,xy[1]-r*1.35,xy[0]+r*1.35,xy[1]+r*1.35),fill=glow)
+              layer=layer.filter(ImageFilter.GaussianBlur(blur)); base.alpha_composite(layer)
+              d=ImageDraw.Draw(base); d.ellipse((xy[0]-r,xy[1]-r,xy[0]+r,xy[1]+r),fill=fill,outline=(235,210,255,230),width=max(2,r//20))
+
+          def rbc(d,x,y,s,rot=0):
+              # stylized biconcave erythrocyte, no text
+              box=(x-s,y-int(s*.58),x+s,y+int(s*.58))
+              d.ellipse(box,fill=(205,45,55,235),outline=(245,105,105,220),width=max(2,s//10))
+              d.ellipse((x-int(s*.48),y-int(s*.23),x+int(s*.48),y+int(s*.23)),fill=(145,28,43,190))
+              d.ellipse((x-int(s*.30),y-int(s*.12),x+int(s*.30),y+int(s*.12)),fill=(225,70,78,170))
+
+          def image129():
+              im=gradient((46,10,33),(117,25,52)).convert('RGBA')
+              d=ImageDraw.Draw(im,'RGBA')
+              # trabecular bone arches
+              for i in range(12):
+                  x=random.Random(129+i).randint(-120,W-80); y=random.Random(229+i).randint(-80,H-50)
+                  rw=random.Random(329+i).randint(180,420); rh=random.Random(429+i).randint(90,220)
+                  d.arc((x,y,x+rw,y+rh),start=10,end=330,fill=(229,194,141,135),width=random.Random(529+i).randint(18,34))
+              # stromal mesh
+              rng=random.Random(129)
+              for _ in range(55):
+                  pts=[]
+                  x=rng.randint(80,W-80); y=rng.randint(70,H-70)
+                  pts=[(x,y),(x+rng.randint(-120,140),y+rng.randint(-80,100)),(x+rng.randint(-180,180),y+rng.randint(-150,150))]
+                  d.line(pts,fill=(105,122,190,80),width=rng.randint(2,6),joint='curve')
+              # sinusoid vessels
+              for off in [0,38]:
+                  pts=[(-100,820-off),(260,700-off),(620,760-off),(940,620-off),(1260,690-off),(1640,520-off)]
+                  d.line(pts,fill=(105,20,52,220),width=45 if off==0 else 18,joint='curve')
+              # mature cells around
+              for x,y,s in [(1120,260,48),(1235,330,44),(1085,760,44),(1325,700,52),(290,290,38),(345,790,45)]: rbc(d,x,y,s)
+              # platelets
+              for _ in range(28):
+                  x=rng.randint(980,1430); y=rng.randint(470,650); rr=rng.randint(6,13)
+                  d.polygon([(x-rr,y),(x,y-rr),(x+rr,y),(x,y+rr)],fill=(180,102,195,215))
+              # white cells
+              for x,y,r,col in [(1240,450,42,(103,136,220,235)),(1360,410,39,(203,95,165,235)),(1140,400,37,(150,105,210,235))]:
+                  glow_circle(im,(x,y),r,col,(120,90,240,70),18)
+              # progenitors and HSC
+              for x,y,r in [(520,420,55),(680,310,45),(660,690,50),(430,625,44),(825,510,48)]:
+                  glow_circle(im,(x,y),r,(105,62,155,240),(126,82,235,75),22)
+                  ImageDraw.Draw(im,'RGBA').ellipse((x-r*.45,y-r*.45,x+r*.45,y+r*.45),fill=(45,35,98,210))
+              glow_circle(im,(760,505),112,(120,62,170,245),(190,95,255,115),45)
+              d=ImageDraw.Draw(im,'RGBA')
+              d.ellipse((710,455,810,555),fill=(48,28,98,225))
+              for a in range(0,360,30):
+                  rr=72; x=760+math.cos(math.radians(a))*rr; y=505+math.sin(math.radians(a))*rr
+                  d.ellipse((x-8,y-8,x+8,y+8),fill=(205,135,235,145))
+              return im.convert('RGB')
+
+          def image130():
+              im=gradient((20,32,55),(92,28,52)).convert('RGBA')
+              d=ImageDraw.Draw(im,'RGBA'); rng=random.Random(130)
+              # pale trabecular bone at borders
+              for i in range(14):
+                  x=rng.randint(-180,W-60); y=rng.randint(-100,H-40); rw=rng.randint(220,520); rh=rng.randint(110,260)
+                  d.arc((x,y,x+rw,y+rh),0,330,fill=(224,192,145,125),width=rng.randint(16,32))
+              # large sinusoid network
+              vessel=Image.new('RGBA',im.size,(0,0,0,0)); vd=ImageDraw.Draw(vessel)
+              main=[(-100,760),(220,640),(480,690),(720,520),(1030,560),(1320,390),(1650,440)]
+              vd.line(main,fill=(116,28,62,235),width=86,joint='curve'); vd.line(main,fill=(186,55,82,170),width=46,joint='curve')
+              branch=[(720,520),(650,280),(820,120)]; vd.line(branch,fill=(92,38,80,210),width=52,joint='curve'); vd.line(branch,fill=(174,76,103,140),width=25,joint='curve')
+              im.alpha_composite(vessel)
+              d=ImageDraw.Draw(im,'RGBA')
+              # endothelial nuclei along vessel
+              for x,y in [(180,660),(390,665),(590,620),(810,540),(1010,535),(1210,450),(1420,420),(690,380),(720,245)]:
+                  d.ellipse((x-24,y-10,x+24,y+10),fill=(72,113,165,215))
+              # stromal cells as blue stellate network
+              for _ in range(26):
+                  x=rng.randint(120,1400); y=rng.randint(120,900)
+                  col=(80,130,170,120)
+                  d.ellipse((x-16,y-10,x+16,y+10),fill=(100,160,195,190))
+                  for a in range(0,360,60):
+                      L=rng.randint(45,105); ex=x+math.cos(math.radians(a))*L; ey=y+math.sin(math.radians(a))*L
+                      d.line((x,y,ex,ey),fill=col,width=3)
+              # adipocytes as translucent golden spheres
+              for x,y,r in [(250,220,72),(360,170,56),(1280,760,78),(1395,690,60)]:
+                  d.ellipse((x-r,y-r,x+r,y+r),fill=(224,174,76,120),outline=(246,214,138,170),width=4)
+                  d.ellipse((x-r*.38,y-r*.38,x+r*.38,y+r*.38),fill=(255,224,150,70))
+              # megakaryocyte
+              glow_circle(im,(1040,780),92,(145,85,160,235),(170,95,220,75),30)
+              d=ImageDraw.Draw(im,'RGBA')
+              for _ in range(8):
+                  x=1040+rng.randint(-45,45); y=780+rng.randint(-38,38); rr=rng.randint(12,22)
+                  d.ellipse((x-rr,y-rr,x+rr,y+rr),fill=(70,42,110,190))
+              # HSCs near vessels
+              for x,y,r in [(760,455,68),(860,600,54),(570,565,48),(1180,470,52)]:
+                  glow_circle(im,(x,y),r,(116,72,176,245),(175,110,240,90),25)
+                  ImageDraw.Draw(im,'RGBA').ellipse((x-r*.44,y-r*.44,x+r*.44,y+r*.44),fill=(48,40,102,220))
+              # scattered RBCs in sinusoid
+              d=ImageDraw.Draw(im,'RGBA')
+              for x,y,s in [(300,640,34),(470,665,28),(930,540,30),(1260,430,31),(1430,420,25)]: rbc(d,x,y,s)
+              # extracellular matrix fibers
+              for _ in range(40):
+                  x1=rng.randint(50,1480); y1=rng.randint(50,980); x2=x1+rng.randint(-130,130); y2=y1+rng.randint(-100,100)
+                  d.line((x1,y1,x2,y2),fill=(200,205,225,38),width=rng.randint(1,3))
+              return im.convert('RGB')
+
+          specs=[
+            ('129-hematopoietic-stem-cells-how-they-work-fa.md','129-hematopoietic-stem-cells-how-they-work-featured-image.png',image129),
+            ('130-hematopoietic-microenvironment-how-it-works-fa.md','130-hematopoietic-microenvironment-how-it-works-featured-image.png',image130),
+          ]
+          for md_name,png_name,fn in specs:
+              src=root/md_name; assert src.exists(), src
+              md=src.read_text(encoding='utf-8')
+              assert png_name in md, f'featured image name missing in {md_name}'
+              shutil.copy2(src,out/md_name)
+              img=fn(); assert img.size==(1536,1024)
+              img.save(out/png_name,'PNG',optimize=True)
+              with Image.open(out/png_name) as test:
+                  test.verify()
+              assert (out/png_name).stat().st_size>100000
+              print(md_name, (out/md_name).stat().st_size, png_name, (out/png_name).stat().st_size)
+          PY
+      - name: Upload article 129 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: 129-hematopoietic-stem-cells-how-they-work-fa
+          path: |
+            generated/129-hematopoietic-stem-cells-how-they-work-fa.md
+            generated/129-hematopoietic-stem-cells-how-they-work-featured-image.png
+          if-no-files-found: error
+          compression-level: 6
+      - name: Upload article 130 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: 130-hematopoietic-microenvironment-how-it-works-fa
+          path: |
+            generated/130-hematopoietic-microenvironment-how-it-works-fa.md
+            generated/130-hematopoietic-microenvironment-how-it-works-featured-image.png
+          if-no-files-found: error
+          compression-level: 6
