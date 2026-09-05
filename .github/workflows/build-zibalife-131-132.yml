@@ -1,0 +1,177 @@
+name: Build ZibaLife 131-132 packages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'zibalife-body/131-frontal-lobe-how-it-works-fa.md'
+      - 'zibalife-body/132-parietal-lobe-how-it-works-fa.md'
+      - '.github/workflows/build-zibalife-131-132.yml'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pillow
+        run: python -m pip install pillow
+      - name: Generate featured images and validate package inputs
+        run: |
+          python - <<'PY'
+          from PIL import Image, ImageDraw, ImageFilter
+          from pathlib import Path
+          import math, random, shutil, re
+
+          W,H=1536,1024
+          root=Path('zibalife-body')
+          out=Path('generated')
+          out.mkdir(exist_ok=True)
+
+          def gradient(top,bottom):
+              im=Image.new('RGB',(W,H))
+              px=im.load()
+              for y in range(H):
+                  t=y/(H-1)
+                  c=tuple(int(top[i]*(1-t)+bottom[i]*t) for i in range(3))
+                  for x in range(W):
+                      px[x,y]=c
+              return im.convert('RGBA')
+
+          def soft_blob(base, bbox, fill, blur=0):
+              layer=Image.new('RGBA',base.size,(0,0,0,0))
+              d=ImageDraw.Draw(layer,'RGBA')
+              d.ellipse(bbox,fill=fill)
+              if blur:
+                  layer=layer.filter(ImageFilter.GaussianBlur(blur))
+              base.alpha_composite(layer)
+
+          def brain_base(seed, highlight='frontal'):
+              rng=random.Random(seed)
+              im=gradient((238,245,252),(202,222,238))
+              # faint vignette
+              vign=Image.new('RGBA',(W,H),(0,0,0,0)); vd=ImageDraw.Draw(vign,'RGBA')
+              vd.rectangle((0,0,W,H),fill=(15,38,62,18))
+              im.alpha_composite(vign)
+              # head/cranial suggestion
+              soft_blob(im,(120,85,1265,980),(236,220,203,90),35)
+              # brain silhouette made from overlapping cortical lobules
+              cortex=Image.new('RGBA',(W,H),(0,0,0,0)); d=ImageDraw.Draw(cortex,'RGBA')
+              lobes=[
+                (300,260,700,640),(475,175,880,590),(670,145,1080,585),(860,205,1240,620),
+                (360,430,760,790),(610,395,1010,800),(835,390,1210,760)
+              ]
+              for box in lobes:
+                  d.ellipse(box,fill=(216,153,145,245),outline=(172,108,105,210),width=4)
+              # temporal under-lobe
+              d.ellipse((520,565,1095,835),fill=(207,144,137,245),outline=(168,103,101,205),width=4)
+              # cerebellum and brainstem
+              d.ellipse((1030,650,1325,880),fill=(194,132,126,240),outline=(154,94,92,210),width=4)
+              d.rounded_rectangle((985,740,1080,990),radius=42,fill=(188,127,121,235),outline=(150,90,90,210),width=4)
+              # grooves
+              for i in range(55):
+                  x=rng.randint(350,1170); y=rng.randint(220,735)
+                  length=rng.randint(70,180); amp=rng.randint(10,32)
+                  pts=[]
+                  for j in range(12):
+                      xx=x+j*length/11
+                      yy=y+math.sin(j/11*math.pi*2+rng.random())*amp
+                      pts.append((xx,yy))
+                  d.line(pts,fill=(132,83,83,105),width=rng.randint(3,7),joint='curve')
+              cortex=cortex.filter(ImageFilter.GaussianBlur(0.5))
+              im.alpha_composite(cortex)
+
+              # highlight mask by anatomical region
+              hl=Image.new('RGBA',(W,H),(0,0,0,0)); hd=ImageDraw.Draw(hl,'RGBA')
+              if highlight=='frontal':
+                  # anterior portion, ending near central sulcus
+                  hd.ellipse((250,190,790,760),fill=(232,99,58,125))
+                  hd.ellipse((370,175,835,650),fill=(242,128,66,105))
+                  glow=(255,135,70,55)
+              else:
+                  # superior posterior cortex, behind central sulcus
+                  hd.ellipse((700,155,1170,660),fill=(85,121,214,120))
+                  hd.ellipse((820,220,1240,650),fill=(98,137,226,95))
+                  glow=(95,145,245,55)
+              hl=hl.filter(ImageFilter.GaussianBlur(12))
+              im.alpha_composite(hl)
+
+              # central sulcus guide as natural groove, no labels
+              d=ImageDraw.Draw(im,'RGBA')
+              pts=[(720,205),(700,300),(735,395),(710,500),(750,610),(730,705)]
+              d.line(pts,fill=(105,72,84,155),width=12,joint='curve')
+              d.line(pts,fill=(248,219,214,90),width=3,joint='curve')
+
+              # network dots/tract glow kept subtle
+              net=Image.new('RGBA',(W,H),(0,0,0,0)); nd=ImageDraw.Draw(net,'RGBA')
+              for i in range(26):
+                  x=rng.randint(360,1130); y=rng.randint(250,720)
+                  r=rng.randint(4,9)
+                  nd.ellipse((x-r,y-r,x+r,y+r),fill=(255,244,230,95))
+                  if i>0 and rng.random()<0.45:
+                      x2=x+rng.randint(-120,120); y2=y+rng.randint(-90,90)
+                      nd.line((x,y,x2,y2),fill=(255,245,235,35),width=2)
+              net=net.filter(ImageFilter.GaussianBlur(1.2)); im.alpha_composite(net)
+
+              # mild global sharpen and vignette
+              final=im.convert('RGB').filter(ImageFilter.UnsharpMask(radius=1.4,percent=120,threshold=3))
+              return final
+
+          specs=[
+            ('131-frontal-lobe-how-it-works-fa.md','131-frontal-lobe-how-it-works-featured-image.png','frontal',131),
+            ('132-parietal-lobe-how-it-works-fa.md','132-parietal-lobe-how-it-works-featured-image.png','parietal',132),
+          ]
+
+          required_headings=['## نکات کلیدی','## منابع','## جدول ردیابی ادعاها','## چک‌لیست کنترل کیفیت']
+          for md_name,png_name,region,seed in specs:
+              src=root/md_name
+              assert src.exists(), src
+              md=src.read_text(encoding='utf-8')
+              if md_name.startswith('132-'):
+                  md=md.replace('Kendra Z, et al. **Anatomy, Central Nervous System**','Konstantinos Margetis, Vamsi Reddy, Paramvir Singh. **Anatomy, Central Nervous System**')
+              assert png_name in md, f'featured image name missing in {md_name}'
+              assert 'medical_review_status: "در انتظار بازبینی پزشکی"' in md
+              assert 'این مطلب برای آموزش عمومی است و جایگزین تشخیص یا توصیه پزشک نیست.' in md
+              assert all(h in md for h in required_headings)
+              assert 'gpt-5.6-terra' not in md.lower()
+              # no links to future queue items
+              for future in ['temporal-lobe-how-it-works','occipital-lobe-how-it-works','basal-ganglia-how-it-works','thalamus-how-it-works']:
+                  assert future not in md
+              (out/md_name).write_text(md,encoding='utf-8')
+              img=brain_base(seed,region)
+              assert img.size==(1536,1024)
+              img.save(out/png_name,'PNG',optimize=True)
+              with Image.open(out/png_name) as test:
+                  test.verify()
+              assert (out/png_name).stat().st_size>100000, (png_name,(out/png_name).stat().st_size)
+              print(md_name,(out/md_name).stat().st_size,png_name,(out/png_name).stat().st_size)
+          PY
+      - name: Validate generated file set
+        run: |
+          test "$(find generated -maxdepth 1 -type f | wc -l)" -eq 4
+          test -s generated/131-frontal-lobe-how-it-works-fa.md
+          test -s generated/131-frontal-lobe-how-it-works-featured-image.png
+          test -s generated/132-parietal-lobe-how-it-works-fa.md
+          test -s generated/132-parietal-lobe-how-it-works-featured-image.png
+      - name: Upload article 131 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: 131-frontal-lobe-how-it-works-fa
+          path: |
+            generated/131-frontal-lobe-how-it-works-fa.md
+            generated/131-frontal-lobe-how-it-works-featured-image.png
+          if-no-files-found: error
+          compression-level: 6
+      - name: Upload article 132 package
+        uses: actions/upload-artifact@v4
+        with:
+          name: 132-parietal-lobe-how-it-works-fa
+          path: |
+            generated/132-parietal-lobe-how-it-works-fa.md
+            generated/132-parietal-lobe-how-it-works-featured-image.png
+          if-no-files-found: error
+          compression-level: 6
